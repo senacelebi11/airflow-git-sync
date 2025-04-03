@@ -19,7 +19,8 @@ with DAG(
     run_clean_script = SSHOperator(
         task_id='run_clean_script_on_spark',
         ssh_conn_id='ssh_spark_client',
-        command='python3 /opt/airflow/code_base/airflow-git-sync/scripts/clean_store_data.py',
+        command='python3 /dataops/scripts/clean_store_data.py',
+
     )
 
     run_clean_script
