@@ -1,16 +1,27 @@
-import pandas as pd
-import os
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
 
-# MinIO içindeki CSV dosyasının yolu
-input_file_path = "/dataops/raw/dirty_store_transactions.csv"
-output_file_path = "/dataops/clean/clean_data_transactions.csv"
+# Spark session başlat
+spark = SparkSession.builder \
+    .appName("Clean Store Transactions") \
+    .getOrCreate()
 
-df = pd.read_csv(input_file_path)
+# MinIO veya yerel dosyadan veriyi oku (CSV varsayalım)
+df = spark.read.option("header", "true").csv("s3a://dataops/dirty_store_transactions.csv")
 
-df = df.drop_duplicates()
+# Basit bir temizlik örneği
+clean_df = df.filter(col("amount").isNotNull())
 
-df = df.dropna()
+# PostgreSQL'e yaz
+clean_df.write \
+    .format("jdbc") \
+    .option("url", "jdbc:postgresql://postgres:5432/traindb") \
+    .option("dbtable", "public.clean_data_transactions") \
+    .option("user", "airflow") \
+    .option("password", "airflow") \
+    .option("driver", "org.postgresql.Driver") \
+    .mode("overwrite") \
+    .save()
 
-os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
-df.to_csv(output_file_path, index=False)
-print("Cleaning completed and saved to:", output_file_path)
+# Bitir
+spark.stop()
